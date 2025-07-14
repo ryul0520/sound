@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ✨ soundFiles 객체의 경로에서 "sounds/"를 모두 제거했습니다.
     const soundFiles = {
         bgm: 'bgm.mp3',
         jump: 'jump.wav',
@@ -18,8 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const buttonContainer = document.getElementById('button-container');
     let audioCtx;
     const loadedSounds = {};
+    
+    // ✨ BGM 전용 소스 노드를 저장할 변수
+    let bgmSourceNode = null;
 
-    // 1. 오디오 컨텍스트 초기화 및 사용자 상호작용 리스너
+    // 1. 오디오 컨텍스트 초기화
     function initAudio() {
         if (!audioCtx) {
             try {
@@ -43,15 +45,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.addEventListener('click', initAudio);
     document.body.addEventListener('touchstart', initAudio);
 
-    // 2. 사운드 로딩 함수
+    // 2. 사운드 로딩
     async function loadAllSounds() {
+        // ... (이전 코드와 동일, 생략 가능)
         const promises = Object.entries(soundFiles).map(async ([key, url]) => {
             const button = document.getElementById(`btn-${key}`);
             try {
                 const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const arrayBuffer = await response.arrayBuffer();
                 const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
                 loadedSounds[key] = audioBuffer;
@@ -62,20 +63,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(`❌ Failed to load sound "${key}" from "${url}":`, error);
             }
         });
-
         await Promise.all(promises);
-        statusDiv.textContent = '모든 사운드 로딩 시도 완료. 버튼을 눌러 테스트하세요.';
+        statusDiv.textContent = '모든 사운드 로딩 완료. 버튼을 눌러 테스트하세요.';
     }
 
-    // 3. 사운드 재생 함수
-    function playSound(key) {
+    // 3. ✨ 수정된 사운드 재생 함수들 ✨
+
+    // BGM 재생/정지 토글 함수
+    function toggleBGM(key) {
         if (!loadedSounds[key]) {
-            console.warn(`Sound "${key}" is not loaded or failed to load.`);
+            console.warn(`BGM "${key}" is not loaded.`);
             return;
         }
-        if (!audioCtx || audioCtx.state !== 'running') {
-            statusDiv.textContent = '오디오가 활성화되지 않았습니다. 화면을 먼저 클릭해주세요.';
-            console.warn('AudioContext is not running. Please interact with the page first.');
+
+        if (bgmSourceNode) {
+            // BGM이 재생 중이면 멈춤
+            bgmSourceNode.stop();
+            bgmSourceNode = null;
+            console.log(`⏹️ Stopped BGM: ${key}`);
+        } else {
+            // BGM이 멈춰있으면 재생
+            bgmSourceNode = audioCtx.createBufferSource();
+            bgmSourceNode.buffer = loadedSounds[key];
+            bgmSourceNode.loop = true;
+            bgmSourceNode.connect(audioCtx.destination);
+            bgmSourceNode.start(0);
+            
+            // BGM이 멈추면 (stop() 호출 시) bgmSourceNode를 null로 설정
+            bgmSourceNode.onended = () => {
+                bgmSourceNode = null;
+            };
+            console.log(`▶️ Playing BGM: ${key}`);
+        }
+    }
+
+    // 효과음(SFX) 재생 함수 (누를 때마다 새로 재생)
+    function playSFX(key) {
+        if (!loadedSounds[key]) {
+            console.warn(`SFX "${key}" is not loaded.`);
             return;
         }
 
@@ -83,17 +108,33 @@ document.addEventListener('DOMContentLoaded', () => {
         source.buffer = loadedSounds[key];
         source.connect(audioCtx.destination);
         source.start(0);
+        console.log(`🔊 Playing SFX: ${key}`);
     }
 
-    // 4. 동적으로 버튼 생성
+
+    // 4. 동적으로 버튼 생성 및 이벤트 연결
     for (const key in soundFiles) {
         const button = document.createElement('button');
         button.id = `btn-${key}`;
         button.textContent = key;
+        
         button.addEventListener('click', (e) => {
             e.stopPropagation();
-            playSound(key);
+
+            // 오디오 컨텍스트 활성화 확인
+            if (!audioCtx || audioCtx.state !== 'running') {
+                statusDiv.textContent = '오디오가 활성화되지 않았습니다. 화면을 먼저 클릭해주세요.';
+                return;
+            }
+            
+            // ✨ 키(key)에 따라 다른 함수를 호출
+            if (key === 'bgm') {
+                toggleBGM(key);
+            } else {
+                playSFX(key);
+            }
         });
+        
         buttonContainer.appendChild(button);
     }
 });
