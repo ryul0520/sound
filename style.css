@@ -9,14 +9,14 @@ canvas {
     cursor: none;
 }
 
-/* 이 부분을 추가해 주세요 */
 #start-screen {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
+    /* ### 수정된 부분 ### : 배경을 투명하게 변경 */
+    background: transparent;
     display: flex;
     justify-content: center;
     align-items: center;

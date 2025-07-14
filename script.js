@@ -46,7 +46,6 @@ window.onload = function() {
     const MAX_GAMBLE_COINS = 1;
     const RAINBOW_PLATFORM_CHANCE = 0.0375;
     
-    // ✨ 코요테 타임과 점프 버퍼링 관련 변수
     let coyoteTimeCounter = 0;
     const COYOTE_TIME_DURATION = 100; // 100ms
     let jumpBufferTime = 0;
@@ -162,12 +161,11 @@ window.onload = function() {
         if (portal && !gameCleared) { if (checkPlatformCollision(player, portal)) clearGame(); }
         player.rotationAngle += player.dx * 0.02; if (player.worldX > highestX) highestX = player.worldX; 
         
-        // ### BUG FIX 1/2: 추락사 시 소리 재생 순서 변경 ###
         if (player.worldY > viewHeight / 2 + height + 800) { 
             if (!gameCleared) { 
                 player.isDead = true; 
-                soundManager.playSound('hit'); // 소리를 먼저 재생
-                soundManager.muteFX(true);   // 그 다음에 모든 효과음 끄기
+                soundManager.playSound('hit');
+                soundManager.muteFX(true);
                 attackEvents.forEach(e => soundManager.stopLoop(e.loopSound)); 
                 attackEvents = []; 
                 setTimeout(() => { init(currentStage, false); }, 500); 
@@ -178,7 +176,7 @@ window.onload = function() {
     function checkPlatformCollision(p, plat) { const cX = Math.max(plat.worldX, Math.min(p.worldX, plat.worldX + plat.width)); const cY = Math.max(plat.worldY, Math.min(p.worldY, plat.worldY + plat.height)); return ((p.worldX - cX)**2 + (p.worldY - cY)**2) < (p.radius**2); }
     function resetPlayer() { highestX = 0; player.worldX = player.initialX; player.worldY = player.initialY; player.dx = 0; player.dy = 0; player.isFrozen = false; player.freezeEndTime = 0; player.isBoosted = false; player.boostEndTime = 0; player.controlsInverted = false; player.invertEndTime = 0; player.standingOnPlatform = null; player.isDead = false; jumpBufferTime = 0; coyoteTimeCounter = 0; soundManager.muteFX(false); }
     function renderWorld(time) { ctx.save(); const scaledViewWidth = viewWidth; const scaledViewHeight = viewHeight; ctx.translate(-(camera.x * 0.2) % 1024, -(camera.y * 0.2) % 1024); ctx.fillStyle = bgPattern; ctx.fillRect((camera.x * 0.2) % 1024, (camera.y * 0.2) % 1024, scaledViewWidth + 1024, scaledViewHeight + 1024); ctx.restore(); const physicalObjects = worldObjects.filter(o => o.isPhysical); physicalObjects.forEach(obj => { const screenX = Math.floor(obj.worldX - camera.x); const screenY = Math.floor(obj.worldY - camera.y); if (screenX + obj.width < 0 || screenX > scaledViewWidth || screenY + obj.height < 0 || screenY > scaledViewHeight) return; if (obj.type === 'rainbow') { const gradient = ctx.createRadialGradient(screenX + obj.width / 2, screenY + obj.height / 2, 0, screenX + obj.width / 2, screenY + obj.height / 2, obj.width * 0.8); const hue = (time / 20) % 360; gradient.addColorStop(0, `hsla(${hue}, 85%, 75%, 0.8)`); gradient.addColorStop(0.5, `hsla(${(hue + 120) % 360}, 85%, 75%, 0.5)`); gradient.addColorStop(1, `hsla(${(hue + 240) % 360}, 85%, 75%, 0.2)`); ctx.fillStyle = gradient; ctx.fillRect(screenX, screenY, obj.width, obj.height); } else { ctx.save(); ctx.beginPath(); ctx.rect(screenX, screenY, obj.width, obj.height); ctx.clip(); ctx.translate(-(camera.x % 1024), -(camera.y % 1024)); ctx.fillStyle = bgPattern; ctx.fillRect(camera.x % 1024, camera.y % 1024, scaledViewWidth + 1024, scaledViewHeight + 1024); ctx.restore(); } }); }
-    function createPortalAssets() { const outerWidth = portal.width + PORTAL_BORDER_SIZE * 2; const outerHeight = portal.height + PORTAL_BORDER_SIZE * 2; portalBorderCanvas = document.createElement('canvas'); portalBorderCanvas.width = outerWidth; portalBorderCanvas.height = outerHeight; const borderCtx = portalBorderCanvas.getContext('2d'); for(let y=0; y<outerHeight; y++) for(let x=0; x<outerWidth; x++) if (x<PORTAL_BORDER_SIZE || x>=outerWidth-PORTAL_BORDER_SIZE || y<PORTAL_BORDER_SIZE || y>=outerHeight-PORTAL_BORDER_SIZE) if(getStaticNoiseValue(x,y)>128) { const lightness=15+Math.random()*15; borderCtx.fillStyle=`hsl(0, 75%, ${lightness}%)`; borderCtx.fillRect(x,y,1,1); } portalNoiseMaskCanvas = document.createElement('canvas'); portalNoiseMaskCanvas.width = portal.width; portalNoiseMaskCanvas.height = portal.height; const maskCtx = portalNoiseMaskCanvas.getContext('2d'); for (let y=0; y<portal.height; y++) for (let x=0; x<portal.width; x++) if(getStaticNoiseValue(x,y)>128) { maskCtx.fillStyle='black'; maskCtx.fillRect(x,y,1,1); } portalCompositeCanvas = document.createElement('canvas'); portalCompositeCanvas.width = outerWidth; portalCompositeCanvas.height = outerHeight; }
+    function createPortalAssets() { if (!portal) return; const outerWidth = portal.width + PORTAL_BORDER_SIZE * 2; const outerHeight = portal.height + PORTAL_BORDER_SIZE * 2; portalBorderCanvas = document.createElement('canvas'); portalBorderCanvas.width = outerWidth; portalBorderCanvas.height = outerHeight; const borderCtx = portalBorderCanvas.getContext('2d'); for(let y=0; y<outerHeight; y++) for(let x=0; x<outerWidth; x++) if (x<PORTAL_BORDER_SIZE || x>=outerWidth-PORTAL_BORDER_SIZE || y<PORTAL_BORDER_SIZE || y>=outerHeight-PORTAL_BORDER_SIZE) if(getStaticNoiseValue(x,y)>128) { const lightness=15+Math.random()*15; borderCtx.fillStyle=`hsl(0, 75%, ${lightness}%)`; borderCtx.fillRect(x,y,1,1); } portalNoiseMaskCanvas = document.createElement('canvas'); portalNoiseMaskCanvas.width = portal.width; portalNoiseMaskCanvas.height = portal.height; const maskCtx = portalNoiseMaskCanvas.getContext('2d'); for (let y=0; y<portal.height; y++) for (let x=0; x<portal.width; x++) if(getStaticNoiseValue(x,y)>128) { maskCtx.fillStyle='black'; maskCtx.fillRect(x,y,1,1); } portalCompositeCanvas = document.createElement('canvas'); portalCompositeCanvas.width = outerWidth; portalCompositeCanvas.height = outerHeight; }
     function drawPortal(time) { if (!portal || !portalCompositeCanvas) return; const pCtx = portalCompositeCanvas.getContext('2d'); const outerWidth = portalCompositeCanvas.width; const outerHeight = portalCompositeCanvas.height; pCtx.clearRect(0, 0, outerWidth, outerHeight); const gradient = pCtx.createLinearGradient(0, PORTAL_BORDER_SIZE, 0, PORTAL_BORDER_SIZE + portal.height); const hue = (time / 20) % 360; gradient.addColorStop(0, `hsla(${hue}, 80%, 40%, 0.8)`); gradient.addColorStop(1, `hsla(${(hue + 40) % 360}, 80%, 40%, 0.8)`); pCtx.fillStyle = gradient; pCtx.fillRect(PORTAL_BORDER_SIZE, PORTAL_BORDER_SIZE, portal.width, portal.height); pCtx.globalCompositeOperation = 'destination-in'; pCtx.drawImage(portalNoiseMaskCanvas, PORTAL_BORDER_SIZE, PORTAL_BORDER_SIZE); pCtx.globalCompositeOperation = 'source-over'; pCtx.drawImage(portalBorderCanvas, 0, 0); const screenX = Math.floor(portal.worldX - camera.x); const screenY = Math.floor(portal.worldY - camera.y); ctx.drawImage(portalCompositeCanvas, screenX - PORTAL_BORDER_SIZE, screenY - PORTAL_BORDER_SIZE); }
     function updateCoins() { [...iceCoins, ...rainbowCoins, ...redCoins, ...gambleCoins].forEach(coin => { if (coin.active) { coin.worldX += coin.dx; coin.worldY += coin.dy; const screenLeft = camera.x + coin.radius; const screenRight = camera.x + viewWidth - coin.radius; const screenTop = camera.y + coin.radius; const screenBottom = camera.y + viewHeight - coin.radius; if (coin.worldX < screenLeft || coin.worldX > screenRight) { coin.dx *= -1; coin.worldX = Math.max(screenLeft, Math.min(coin.worldX, screenRight)); } if (coin.worldY < screenTop || coin.worldY > screenBottom) { coin.dy *= -1; coin.worldY = Math.max(screenTop, Math.min(coin.worldY, screenBottom)); } } }); }
     function drawCoins(time) { ctx.save(); iceCoins.forEach(coin => { if (coin.active) { const screenX = coin.worldX - camera.x; const screenY = coin.worldY - camera.y; ctx.fillStyle = 'black'; ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(screenX, screenY, coin.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.beginPath(); ctx.arc(screenX - coin.radius * 0.3, screenY - coin.radius * 0.3, coin.radius * 0.3, 0, Math.PI * 2); ctx.fill(); } }); rainbowCoins.forEach(coin => { if (coin.active) { const screenX = coin.worldX - camera.x; const screenY = coin.worldY - camera.y; const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, coin.radius); const hue = (time / 10) % 360; gradient.addColorStop(0, `hsl(${hue}, 100%, 70%)`); gradient.addColorStop(0.5, `hsl(${(hue + 120) % 360}, 100%, 70%)`); gradient.addColorStop(1, `hsl(${(hue + 240) % 360}, 100%, 70%)`); ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(screenX, screenY, coin.radius, 0, Math.PI * 2); ctx.fill(); } }); redCoins.forEach(coin => { if (coin.active) { const screenX = coin.worldX - camera.x; const screenY = coin.worldY - camera.y; ctx.fillStyle = 'red'; ctx.strokeStyle = '#800000'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(screenX, screenY, coin.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); } }); gambleCoins.forEach(coin => { if(coin.active) { const screenX = coin.worldX - camera.x; const screenY = coin.worldY - camera.y; ctx.fillStyle = 'white'; ctx.strokeStyle = '#888'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(screenX, screenY, coin.radius, 0, Math.PI*2); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'black'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', screenX, screenY); } }); ctx.restore(); }
@@ -204,11 +202,10 @@ window.onload = function() {
             p.worldY += p.dy; 
             const distSqToPlayer = (player.worldX - p.worldX)**2 + (player.worldY - p.worldY)**2; 
             
-            // ### BUG FIX 2/2: 유도탄 충돌 시 소리 재생 순서 변경 ###
             if (!player.isDead && distSqToPlayer < (player.radius + p.radius)**2) { 
                 player.isDead = true; 
-                soundManager.playSound('hit'); // 소리를 먼저 재생
-                soundManager.muteFX(true);   // 그 다음에 모든 효과음 끄기
+                soundManager.playSound('hit');
+                soundManager.muteFX(true);
                 attackEvents.forEach(e => soundManager.stopLoop(e.loopSound)); 
                 attackEvents = []; 
                 createExplosion(viewWidth / 2, viewHeight / 2, 0); 
@@ -230,19 +227,52 @@ window.onload = function() {
     
     let lastTime = 0;
     let gameRunning = false;
+    
+    // ### 수정된 부분 ###
+    // animate 함수를 수정하여 게임 시작 전에도 배경이 보이도록 함
     function animate(time) {
-        if (!gameRunning) {
-            requestAnimationFrame(animate);
-            return;
-        }
         if(!lastTime) lastTime = time;
-        updatePlayer(time); updateCoins(); updateAttackEvents(time); updateProjectiles();
-        camera.x = player.worldX - (viewWidth / 2); camera.y = player.worldY - (viewHeight / 2);
-        ctx.save(); ctx.scale(1 / CAMERA_ZOOM, 1 / CAMERA_ZOOM);
-        renderWorld(time); drawPortal(time); drawCoins(time); drawProjectiles(time); drawPlayer(time);
+
+        // 게임이 실행 중일 때만 게임 로직 업데이트
+        if (gameRunning) {
+            updatePlayer(time); 
+            updateCoins(); 
+            updateAttackEvents(time); 
+            updateProjectiles();
+        }
+
+        // 카메라는 항상 플레이어를 따라가도록 설정 (시작 전에는 초기 위치)
+        camera.x = player.worldX - (viewWidth / 2); 
+        camera.y = player.worldY - (viewHeight / 2);
+
+        // 렌더링은 항상 실행
+        ctx.save(); 
+        ctx.scale(1 / CAMERA_ZOOM, 1 / CAMERA_ZOOM);
+        
+        renderWorld(time); // 배경과 플랫폼 렌더링
+        
+        // 게임 실행 중에만 동적 요소들 렌더링
+        if (gameRunning) {
+            drawPortal(time); 
+            drawCoins(time); 
+            drawProjectiles(time); 
+            drawPlayer(time);
+        }
+        
         ctx.restore(); 
-        if (!gameCleared) { drawControlButtons(); drawStageUI(); drawResetButton(); }
-        if (gameCleared) { updateAndDrawClearEffects(); }
+        
+        // 게임 실행 중에만 UI 렌더링
+        if (gameRunning) {
+            if (!gameCleared) { 
+                drawControlButtons(); 
+                drawStageUI(); 
+                drawResetButton(); 
+            }
+            if (gameCleared) { 
+                updateAndDrawClearEffects(); 
+            }
+        }
+
         requestAnimationFrame(animate);
     }
     
@@ -258,6 +288,7 @@ window.onload = function() {
         updateControlButtonsPosition();
         gameCleared = false; fireworksLaunched = false;
         rockets = []; particles = []; highestX = 0; hostileProjectiles = [];
+        
         if (isFullReset) {
             currentMapSeed = Date.now() + Math.random();
             iceCoins = []; rainbowCoins = []; redCoins = []; gambleCoins = [];
@@ -265,14 +296,21 @@ window.onload = function() {
             attackEvents = [];
             if(audioCtx && audioCtx.state === 'running') soundManager.playMusic('bgm');
         }
-        resetPlayer();
-        if (!spawnCheckTimer) { spawnCheckTimer = setInterval(spawnManager, SPAWN_CHECK_INTERVAL); }
+        
         const startPlatformY = viewHeight - 100;
+        player.initialX = 150; 
+        player.initialY = startPlatformY - 150;
+        if (isFullReset) {
+            resetPlayer();
+        }
+
+        if (!spawnCheckTimer) { spawnCheckTimer = setInterval(spawnManager, SPAWN_CHECK_INTERVAL); }
+        
         const platforms = [];
         let currentX = -200; let prevY = startPlatformY;
         const startPlatformSegmentWidth = 100; const startPlatformSegmentHeight = startPlatformSegmentWidth / 1.7;
         for (let i = 0; i < 10; i++) { platforms.push({ worldX: currentX, worldY: prevY, width: startPlatformSegmentWidth, height: startPlatformSegmentHeight, isPhysical: true, initialY: prevY }); currentX += startPlatformSegmentWidth; }
-        player.initialX = 150; player.initialY = startPlatformY - 150; player.worldX = player.initialX; player.worldY = player.initialY;
+        
         const seededRandom = createSeededRandom(currentMapSeed);
         const s = stageLevel - 1;
         const platformCount = 10 + s * 5;
@@ -317,14 +355,26 @@ window.onload = function() {
         createPlayerTexture();
         createBackgroundPattern(); 
         window.addEventListener('resize', () => init(currentStage, false));
+        init(loadProgress(), true); // 초기화 로직을 미리 호출하여 배경을 준비
     }
 
-    startButton.addEventListener('click', () => {
-        initAudioContext();
+    // ### 수정된 부분 ###
+    // 게임 시작 로직을 별도 함수로 분리
+    function startGame() {
+        initAudioContext(); // 오디오 컨텍스트 활성화 (모바일 핵심)
         startScreen.style.display = 'none';
         gameRunning = true;
-        init(loadProgress(), true);
+        // init(loadProgress(), true); // preloader에서 미리 호출하므로 여기선 주석 처리
+    }
+
+    // 데스크탑용 클릭 이벤트
+    startButton.addEventListener('click', startGame, { once: true });
+    // 모바일용 터치 이벤트 추가
+    startButton.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // 'click' 이벤트가 중복 실행되는 것을 방지
+        startGame();
     }, { once: true });
+
 
     preloader();
     animate(0);
