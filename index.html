@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Test</title>
+    <style>
+        body { font-family: sans-serif; background-color: #282c34; color: white; padding: 20px; }
+        h1, p { text-align: center; }
+        #button-container { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 800px; margin: 20px auto; }
+        button {
+            padding: 15px 25px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: 2px solid #61dafb;
+            background-color: transparent;
+            color: #61dafb;
+            border-radius: 8px;
+            transition: all 0.2s ease-in-out;
+        }
+        button:hover { background-color: #61dafb; color: #282c34; }
+        button.loaded { border-color: #4caf50; color: #4caf50; }
+        button.loaded:hover { background-color: #4caf50; color: white; }
+        button.error { border-color: #f44336; color: #f44336; }
+        #status { text-align: center; font-size: 1.1em; margin-top: 30px; height: 30px; }
+    </style>
+</head>
+<body>
+
+    <h1>Web Audio API Sound Test</h1>
+    <p>먼저 화면의 아무 곳이나 클릭하여 오디오를 활성화하세요.</p>
+    <p>버튼을 눌러 각 사운드를 재생할 수 있습니다. 로드에 성공하면 버튼 색이 바뀝니다.</p>
+
+    <div id="status">오디오를 활성화하려면 화면을 클릭하세요...</div>
+    <div id="button-container"></div>
+
+    <script src="test.js"></script>
+
+</body>
+</html>
