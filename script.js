@@ -130,7 +130,6 @@ window.onload = function() {
         const moveRight = keys['keyd'] || keys['arrowright'] || isTouchingRight;
         if (player.controlsInverted) { if (moveLeft) player.dx += PLAYER_ACCEL; if (moveRight) player.dx -= PLAYER_ACCEL; } else { if (moveLeft) player.dx -= PLAYER_ACCEL; if (moveRight) player.dx += PLAYER_ACCEL; }
         
-        // ✨ 코요테 타임과 점프 버퍼링 로직
         const jumpBufferValid = Date.now() - jumpBufferTime < JUMP_BUFFER_DURATION;
         const coyoteTimeValid = Date.now() - coyoteTimeCounter < COYOTE_TIME_DURATION;
         if (jumpBufferValid && coyoteTimeValid) {
@@ -140,8 +139,8 @@ window.onload = function() {
                 soundManager.playSound('jump');
             }
             player.dy = JUMP_FORCE;
-            jumpBufferTime = 0; // 버퍼 사용
-            coyoteTimeCounter = 0; // 코요테 타임 사용
+            jumpBufferTime = 0; 
+            coyoteTimeCounter = 0; 
         }
 
         player.dx *= FRICTION; if (Math.abs(player.dx) < 0.1) player.dx = 0; if (Math.abs(player.dx) > MAX_SPEED) player.dx = Math.sign(player.dx) * MAX_SPEED; if (!player.onGround) player.dy += GRAVITY;
@@ -161,7 +160,19 @@ window.onload = function() {
         for (const coin of redCoins) { if (coin.active) { const distSq = (player.worldX - coin.worldX)**2 + (player.worldY - coin.worldY)**2; if (distSq < (player.radius + coin.radius)**2) { coin.active = false; soundManager.playSound('alert'); const newAttackEvent = { count: 10, nextSpawnTime: time + 2000, loopSound: 'danger_loop' }; setTimeout(() => { if (!player.isDead && attackEvents.includes(newAttackEvent)) { soundManager.startLoop(newAttackEvent.loopSound); } }, 2000); attackEvents.push(newAttackEvent); } } }
         for (const coin of gambleCoins) { if (coin.active) { const distSq = (player.worldX - coin.worldX)**2 + (player.worldY - coin.worldY)**2; if (distSq < (player.radius + coin.radius)**2) { coin.active = false; soundManager.playSound('gamble'); const effect = Math.floor(Math.random() * 3); setTimeout(() => { if (player.isDead) return; switch (effect) { case 0: player.isBoosted = true; player.boostEndTime = time + 5000; soundManager.playSound('boost'); break; case 1: player.controlsInverted = true; player.invertEndTime = time + 5000; soundManager.playSound('invert'); break; case 2: hostileProjectiles = []; createExplosion(player.worldX - camera.x + viewWidth / 2, player.worldY - camera.y + viewHeight/2, 60); soundManager.playSound('hit'); break; } }, 100); } } }
         if (portal && !gameCleared) { if (checkPlatformCollision(player, portal)) clearGame(); }
-        player.rotationAngle += player.dx * 0.02; if (player.worldX > highestX) highestX = player.worldX; if (player.worldY > viewHeight / 2 + height + 800) { if (!gameCleared) { player.isDead = true; soundManager.muteFX(true); soundManager.playSound('hit'); attackEvents.forEach(e => soundManager.stopLoop(e.loopSound)); attackEvents = []; setTimeout(() => { init(currentStage, false); }, 500); } }
+        player.rotationAngle += player.dx * 0.02; if (player.worldX > highestX) highestX = player.worldX; 
+        
+        // ### BUG FIX 1/2: 추락사 시 소리 재생 순서 변경 ###
+        if (player.worldY > viewHeight / 2 + height + 800) { 
+            if (!gameCleared) { 
+                player.isDead = true; 
+                soundManager.playSound('hit'); // 소리를 먼저 재생
+                soundManager.muteFX(true);   // 그 다음에 모든 효과음 끄기
+                attackEvents.forEach(e => soundManager.stopLoop(e.loopSound)); 
+                attackEvents = []; 
+                setTimeout(() => { init(currentStage, false); }, 500); 
+            } 
+        }
     }
     
     function checkPlatformCollision(p, plat) { const cX = Math.max(plat.worldX, Math.min(p.worldX, plat.worldX + plat.width)); const cY = Math.max(plat.worldY, Math.min(p.worldY, plat.worldY + plat.height)); return ((p.worldX - cX)**2 + (p.worldY - cY)**2) < (p.radius**2); }
@@ -172,7 +183,41 @@ window.onload = function() {
     function updateCoins() { [...iceCoins, ...rainbowCoins, ...redCoins, ...gambleCoins].forEach(coin => { if (coin.active) { coin.worldX += coin.dx; coin.worldY += coin.dy; const screenLeft = camera.x + coin.radius; const screenRight = camera.x + viewWidth - coin.radius; const screenTop = camera.y + coin.radius; const screenBottom = camera.y + viewHeight - coin.radius; if (coin.worldX < screenLeft || coin.worldX > screenRight) { coin.dx *= -1; coin.worldX = Math.max(screenLeft, Math.min(coin.worldX, screenRight)); } if (coin.worldY < screenTop || coin.worldY > screenBottom) { coin.dy *= -1; coin.worldY = Math.max(screenTop, Math.min(coin.worldY, screenBottom)); } } }); }
     function drawCoins(time) { ctx.save(); iceCoins.forEach(coin => { if (coin.active) { const screenX = coin.worldX - camera.x; const screenY = coin.worldY - camera.y; ctx.fillStyle = 'black'; ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(screenX, screenY, coin.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.beginPath(); ctx.arc(screenX - coin.radius * 0.3, screenY - coin.radius * 0.3, coin.radius * 0.3, 0, Math.PI * 2); ctx.fill(); } }); rainbowCoins.forEach(coin => { if (coin.active) { const screenX = coin.worldX - camera.x; const screenY = coin.worldY - camera.y; const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, coin.radius); const hue = (time / 10) % 360; gradient.addColorStop(0, `hsl(${hue}, 100%, 70%)`); gradient.addColorStop(0.5, `hsl(${(hue + 120) % 360}, 100%, 70%)`); gradient.addColorStop(1, `hsl(${(hue + 240) % 360}, 100%, 70%)`); ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(screenX, screenY, coin.radius, 0, Math.PI * 2); ctx.fill(); } }); redCoins.forEach(coin => { if (coin.active) { const screenX = coin.worldX - camera.x; const screenY = coin.worldY - camera.y; ctx.fillStyle = 'red'; ctx.strokeStyle = '#800000'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(screenX, screenY, coin.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); } }); gambleCoins.forEach(coin => { if(coin.active) { const screenX = coin.worldX - camera.x; const screenY = coin.worldY - camera.y; ctx.fillStyle = 'white'; ctx.strokeStyle = '#888'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(screenX, screenY, coin.radius, 0, Math.PI*2); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'black'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', screenX, screenY); } }); ctx.restore(); }
     function updateAttackEvents(time) { for (let i = attackEvents.length - 1; i >= 0; i--) { const event = attackEvents[i]; if (event.count > 0 && time >= event.nextSpawnTime) { event.count--; event.nextSpawnTime = time + 1500; hostileProjectiles.push({ worldX: player.worldX, worldY: camera.y - 30, dx: 0, dy: 5, radius: 8, life: 400 }); } if (event.count <= 0) { soundManager.stopLoop(event.loopSound); attackEvents.splice(i, 1); } } }
-    function updateProjectiles() { const projectileSpeedMultiplier = 1 + (currentStage - 1) * 0.08; for (let i = hostileProjectiles.length - 1; i >= 0; i--) { const p = hostileProjectiles[i]; p.life--; if (p.life <= 0) { hostileProjectiles.splice(i, 1); continue; } p.dy += 0.2; const dirX = player.worldX - p.worldX; const dirY = player.worldY - p.worldY; const dist = Math.sqrt(dirX * dirX + dirY * dirY); if (dist > 1) { p.dx += (dirX / dist) * 0.225 * projectileSpeedMultiplier; if (dirY > 0) { p.dy += (dirY / dist) * 0.1125 * projectileSpeedMultiplier; } } const speed = Math.sqrt(p.dx * p.dx + p.dy * p.dy); const maxSpeed = 15 * projectileSpeedMultiplier; if (speed > maxSpeed) { p.dx = (p.dx / speed) * maxSpeed; p.dy = (p.dy / speed) * maxSpeed; } p.worldX += p.dx; p.worldY += p.dy; const distSqToPlayer = (player.worldX - p.worldX)**2 + (player.worldY - p.worldY)**2; if (!player.isDead && distSqToPlayer < (player.radius + p.radius)**2) { player.isDead = true; soundManager.muteFX(true); soundManager.playSound('hit'); attackEvents.forEach(e => soundManager.stopLoop(e.loopSound)); attackEvents = []; createExplosion(viewWidth / 2, viewHeight / 2, 0); setTimeout(() => { init(currentStage, false); }, 500); return; } } }
+    
+    function updateProjectiles() { 
+        const projectileSpeedMultiplier = 1 + (currentStage - 1) * 0.08; 
+        for (let i = hostileProjectiles.length - 1; i >= 0; i--) { 
+            const p = hostileProjectiles[i]; p.life--; 
+            if (p.life <= 0) { hostileProjectiles.splice(i, 1); continue; } 
+            p.dy += 0.2; 
+            const dirX = player.worldX - p.worldX; 
+            const dirY = player.worldY - p.worldY; 
+            const dist = Math.sqrt(dirX * dirX + dirY * dirY); 
+            if (dist > 1) { 
+                p.dx += (dirX / dist) * 0.225 * projectileSpeedMultiplier; 
+                if (dirY > 0) { p.dy += (dirY / dist) * 0.1125 * projectileSpeedMultiplier; } 
+            } 
+            const speed = Math.sqrt(p.dx * p.dx + p.dy * p.dy); 
+            const maxSpeed = 15 * projectileSpeedMultiplier; 
+            if (speed > maxSpeed) { p.dx = (p.dx / speed) * maxSpeed; p.dy = (p.dy / speed) * maxSpeed; } 
+            p.worldX += p.dx; 
+            p.worldY += p.dy; 
+            const distSqToPlayer = (player.worldX - p.worldX)**2 + (player.worldY - p.worldY)**2; 
+            
+            // ### BUG FIX 2/2: 유도탄 충돌 시 소리 재생 순서 변경 ###
+            if (!player.isDead && distSqToPlayer < (player.radius + p.radius)**2) { 
+                player.isDead = true; 
+                soundManager.playSound('hit'); // 소리를 먼저 재생
+                soundManager.muteFX(true);   // 그 다음에 모든 효과음 끄기
+                attackEvents.forEach(e => soundManager.stopLoop(e.loopSound)); 
+                attackEvents = []; 
+                createExplosion(viewWidth / 2, viewHeight / 2, 0); 
+                setTimeout(() => { init(currentStage, false); }, 500); 
+                return; 
+            } 
+        } 
+    }
+
     function drawProjectiles(time) { ctx.save(); hostileProjectiles.forEach(p => { const screenX = p.worldX - camera.x; const screenY = p.worldY - camera.y; const radius = p.radius + Math.sin(time / 50) * 2; const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, radius); gradient.addColorStop(0, 'white'); gradient.addColorStop(0.4, 'yellow'); gradient.addColorStop(1, 'rgba(255, 0, 0, 0.7)'); ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(screenX, screenY, radius, 0, Math.PI * 2); ctx.fill(); }); ctx.restore(); }
     function drawPlayer(time) { if (player.isDead) return; const screenX = viewWidth / 2, screenY = viewHeight / 2; ctx.save(); if (player.onGround && player.standingOnPlatform && player.standingOnPlatform.type === 'rainbow') { const auraRadius = player.radius + 12 + Math.sin(time / 80) * 5; const gradient = ctx.createRadialGradient(screenX, screenY, player.radius, screenX, screenY, auraRadius); const hue = (time / 10) % 360; gradient.addColorStop(0, `hsla(${hue}, 100%, 80%, 0.7)`); gradient.addColorStop(0.5, `hsla(${(hue + 180) % 360}, 100%, 80%, 0.4)`); gradient.addColorStop(1, `hsla(${(hue + 180) % 360}, 100%, 80%, 0)`); ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(screenX, screenY, auraRadius, 0, 2 * Math.PI); ctx.fill(); } else if (player.isBoosted) { const auraRadius = player.radius + 8 + Math.sin(time / 100) * 3; const gradient = ctx.createRadialGradient(screenX, screenY, player.radius, screenX, screenY, auraRadius); const hue = (time / 15) % 360; gradient.addColorStop(0, `hsla(${hue}, 90%, 70%, 0.5)`); gradient.addColorStop(1, `hsla(${(hue + 60) % 360}, 90%, 70%, 0)`); ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(screenX, screenY, auraRadius, 0, 2 * Math.PI); ctx.fill(); } if (player.isFrozen) { ctx.fillStyle = 'black'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(screenX, screenY, player.radius, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); } else { ctx.beginPath(); ctx.arc(screenX, screenY, player.radius, 0, 2 * Math.PI); ctx.clip(); ctx.translate(screenX, screenY); ctx.rotate(player.rotationAngle); ctx.drawImage(playerTextureCanvas, -player.radius, -player.radius, player.radius * 2, player.radius * 2); } ctx.restore(); }
     function clearGame() { if(gameCleared) return; gameCleared = true; soundManager.playSound('clear'); attackEvents.forEach(e => soundManager.stopLoop(e.loopSound)); attackEvents = []; const nextStage = currentStage + 1; const savedHighestStage = parseInt(localStorage.getItem('highestStage')) || 1; if (nextStage > savedHighestStage) { localStorage.setItem('highestStage', nextStage); } setTimeout(() => { init(nextStage, true); }, STAGE_RESET_DELAY); }
