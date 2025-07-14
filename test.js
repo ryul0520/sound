@@ -1,16 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    // ✨ soundFiles 객체의 경로에서 "sounds/"를 모두 제거했습니다.
     const soundFiles = {
-        bgm: 'sounds/bgm.mp3',
-        jump: 'sounds/jump.wav',
-        super_jump: 'sounds/super_jump.wav',
-        hit: 'sounds/hit.wav',
-        boost: 'sounds/boost.wav',
-        freeze: 'sounds/freeze.wav',
-        alert: 'sounds/alert.wav',
-        gamble: 'sounds/gamble.wav',
-        invert: 'sounds/invert.wav',
-        clear: 'sounds/clear.wav'
+        bgm: 'bgm.mp3',
+        jump: 'jump.wav',
+        super_jump: 'super_jump.wav',
+        hit: 'hit.wav',
+        boost: 'boost.wav',
+        freeze: 'freeze.wav',
+        alert: 'alert.wav',
+        gamble: 'gamble.wav',
+        invert: 'invert.wav',
+        clear: 'clear.wav'
     };
 
     const statusDiv = document.getElementById('status');
@@ -35,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // 첫 상호작용 후 리스너 제거
         document.body.removeEventListener('click', initAudio);
         document.body.removeEventListener('touchstart', initAudio);
     }
@@ -55,11 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const arrayBuffer = await response.arrayBuffer();
                 const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
                 loadedSounds[key] = audioBuffer;
-                button.classList.add('loaded'); // 로딩 성공 시 버튼 스타일 변경
-                console.log(`Sound loaded: ${key}`);
+                button.classList.add('loaded');
+                console.log(`✅ Sound loaded: ${key}`);
             } catch (error) {
-                button.classList.add('error'); // 로딩 실패 시 버튼 스타일 변경
-                console.error(`Failed to load sound "${key}" from "${url}":`, error);
+                button.classList.add('error');
+                console.error(`❌ Failed to load sound "${key}" from "${url}":`, error);
             }
         });
 
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. 사운드 재생 함수
     function playSound(key) {
         if (!loadedSounds[key]) {
-            console.warn(`Sound "${key}" is not loaded.`);
+            console.warn(`Sound "${key}" is not loaded or failed to load.`);
             return;
         }
         if (!audioCtx || audioCtx.state !== 'running') {
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         button.id = `btn-${key}`;
         button.textContent = key;
         button.addEventListener('click', (e) => {
-            e.stopPropagation(); // body의 클릭 이벤트와 분리
+            e.stopPropagation();
             playSound(key);
         });
         buttonContainer.appendChild(button);
